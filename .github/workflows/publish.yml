@@ -22,9 +22,9 @@ jobs:
         cat changed_files.txt | grep .md > changed_md_files.txt
 
     - name: Get Medium API credentials
-      uses: secrets/actions/setup-env@v1
+      uses: secrets/setup-env@v1
       with:
-        secrets: medium_api_key
+        secrets: medium
 
     - name: Setup Python
       uses: actions/setup-python@v2
