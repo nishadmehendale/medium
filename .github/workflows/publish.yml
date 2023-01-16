@@ -1,0 +1,64 @@
+name: Publish Medium Blog
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Get changed files
+      run: |
+        git diff-tree --no-commit-id --name-only -r HEAD~1 HEAD > changed_files.txt
+
+    - name: Filter Markdown files
+      run: |
+        cat changed_files.txt | grep .md > changed_md_files.txt
+
+    - name: Get Medium API credentials
+      uses: secrets/actions/setup-env@v1
+      with:
+        secrets: medium_api_key
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        pip install medium-sdk openai_secret_manager
+
+    - name: Publish new blog post
+      run: |
+        # import the medium-sdk library
+        import medium
+        import openai_secret_manager
+
+        # get the access token from secret manager
+        secrets = openai_secret_manager.get_secret("medium")
+        access_token = secrets["api_key"]
+        
+        # authenticate with the Medium API
+        medium = Medium(access_token=access_token)
+
+        # check if the medium blog post already exists
+        with open("changed_md_files.txt", "r") as file:
+            filenames = file.readlines()
+            for filename in filenames:
+                filename = filename.strip()
+                post = medium.get_post_by_filename(filename)
+                if post is None:
+                    with open(filename, "r") as post_file:
+                        post_content = post_file.read()
+                        title = os.path.splitext(filename)[0]
+                        medium.create_post(title=title, content=post_content, content_format='markdown', publish_status='draft')
+                        print(f"Published post {title} to Medium")
+                else:
+                    print(f"Post {post.title} already exists, skipping.")
